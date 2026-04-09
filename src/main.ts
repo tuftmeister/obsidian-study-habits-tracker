@@ -85,6 +85,7 @@ export default class TrackerPlugin extends Plugin {
     });
 
     await this.hydrateFromCache();
+    this.refreshOpenViews();
 
     // ── Inline code-block widgets ───────────────────────────────────────────
     this.registerMarkdownCodeBlockProcessor("habit", (source, el, ctx) => {
@@ -308,6 +309,17 @@ export default class TrackerPlugin extends Plugin {
   }
 
   // ── View helpers ────────────────────────────────────────────────────────────
+
+  refreshOpenViews(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(STUDY_VIEW_TYPE)) {
+      const view = leaf.view as StudyView;
+      view.onClose().then(() => view.onOpen());
+    }
+    for (const leaf of this.app.workspace.getLeavesOfType(HABITS_VIEW_TYPE)) {
+      const view = leaf.view as HabitsView;
+      view.onClose().then(() => view.onOpen());
+    }
+  }
 
   async openStudyView(): Promise<void> {
     await this.openView(STUDY_VIEW_TYPE);

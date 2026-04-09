@@ -438,6 +438,21 @@
 
 .tracker-bars-chart { min-width: 0; }
 
+/* ── Area chart ─────────────────────────────────────────────────────────────── */
+
+.tracker-area-chart { position: relative; width: 100%; }
+.tracker-area-svg   { display: block; width: 100%; }
+.tracker-area-wrap  { width: 100%; }
+
+.tracker-area-grid {
+  stroke: var(--background-modifier-border);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tracker-area-dot { transition: r 120ms; }
+.tracker-area-dot:hover { r: 5; }
+
 .tracker-bars-heading {
   margin: 0;
   font-size: 0.72em;
@@ -901,6 +916,68 @@
 .tracker-timer-widget-controls .tracker-btn { margin-left: 8px !important; margin-right: 8px !important; }
 .tracker-timer-widget-controls .tracker-btn:first-child { margin-left: 0 !important; }
 .tracker-timer-widget-controls .tracker-btn:last-child  { margin-right: 0 !important; }
+
+.tracker-timer-mode-row {
+  display: flex;
+  gap: 0.3em;
+}
+
+.tracker-timer-mode-btn {
+  font-size: 0.72em;
+  padding: 0.25em 0.75em;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.tracker-timer-mode-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.tracker-timer-mode-btn.is-active {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.tracker-timer-mode-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tracker-timer-duration-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  justify-content: center;
+  align-items: center;
+}
+
+.tracker-timer-duration-btn {
+  font-size: 0.72em;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.tracker-timer-duration-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.tracker-timer-duration-input {
+  font-size: 0.72em;
+  padding: 0.2em 0.5em;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  width: 6em;
+}
 
 .tracker-timer-widget-footer {
   font-size: 0.75em;

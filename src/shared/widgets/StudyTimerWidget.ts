@@ -56,6 +56,7 @@ export class StudyTimerWidget extends MarkdownRenderChild {
   private skipBtn!: HTMLButtonElement;
   private todayEl!: HTMLElement;
   private nextEl!: HTMLElement;
+  private durationRowEl!: HTMLElement;
 
   constructor(
     containerEl: HTMLElement,
@@ -82,7 +83,32 @@ export class StudyTimerWidget extends MarkdownRenderChild {
     const el = this.containerEl;
     el.addClasses(["tracker-widget", "tracker-timer-widget"]);
 
-    // Header: mode + phase info
+    // Mode selector
+    const modeRow = el.createDiv({ cls: "tracker-timer-mode-row" });
+    const modes: Array<{ mode: import("../../study/timer/TimerEngine").TimerMode; label: string }> = [
+      { mode: "stopwatch", label: "Stopwatch" },
+      { mode: "timer",     label: "Timer" },
+      { mode: "pomodoro",  label: "Pomodoro" },
+    ];
+    for (const { mode, label } of modes) {
+      const btn = modeRow.createEl("button", {
+        cls: "tracker-timer-mode-btn",
+        text: label,
+      });
+      btn.addEventListener("click", () => {
+        const engine = this.plugin.timerEngine;
+        if (engine.state === "running" || engine.state === "paused") return;
+        engine.configure(mode);
+        this.plugin.stopTimerTick();
+        this.plugin.saveTimerSnapshot(engine.getSnapshot());
+        this.refreshDisplay();
+      });
+      this.register(() => {}); // placeholder so we can update active state in refreshDisplay
+      // store ref by mode for active highlighting
+      (btn as HTMLButtonElement & { dataset: DOMStringMap }).dataset["mode"] = mode;
+    }
+
+    // Header: phase info (pomodoro only)
     this.headerEl = el.createDiv({ cls: "tracker-timer-widget-header" });
 
     // Clock
@@ -109,6 +135,10 @@ export class StudyTimerWidget extends MarkdownRenderChild {
       attr: { "aria-label": "Skip phase" },
     });
     this.skipBtn.addEventListener("click", () => this.onSkip());
+
+    // Duration picker (Timer mode only)
+    this.durationRowEl = el.createDiv({ cls: "tracker-timer-duration-row" });
+    this.buildDurationRow();
 
     // Tag row
     this.buildTagRow(el);
@@ -161,6 +191,55 @@ export class StudyTimerWidget extends MarkdownRenderChild {
     }
   }
 
+  private buildDurationRow(): void {
+    const row = this.durationRowEl;
+    row.empty();
+
+    const presets = [5, 10, 15, 25, 45, 60];
+    for (const mins of presets) {
+      const btn = row.createEl("button", {
+        cls: "tracker-timer-duration-btn",
+        text: `${mins}m`,
+      });
+      btn.addEventListener("click", () => {
+        this.plugin.timerEngine.configure("timer", mins * 60);
+        this.plugin.saveTimerSnapshot(this.plugin.timerEngine.getSnapshot());
+        this.refreshDisplay();
+      });
+    }
+
+    // Custom input
+    const customWrap = row.createSpan({ cls: "tracker-timer-duration-custom" });
+    const input = customWrap.createEl("input", {
+      cls: "tracker-timer-duration-input",
+      attr: { type: "text", placeholder: "e.g. 90m", size: "6" },
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const secs = this.parseDurationInput(input.value.trim());
+      if (secs === null) return;
+      this.plugin.timerEngine.configure("timer", secs);
+      this.plugin.saveTimerSnapshot(this.plugin.timerEngine.getSnapshot());
+      input.value = "";
+      this.refreshDisplay();
+    });
+  }
+
+  private parseDurationInput(raw: string): number | null {
+    // "90m", "1h30m", "1:30", "90"
+    const hmMatch = raw.match(/^(?:(\d+)h\s*)?(\d+)m?$/i);
+    if (hmMatch) {
+      const h = parseInt(hmMatch[1] ?? "0", 10);
+      const m = parseInt(hmMatch[2], 10);
+      return (h * 60 + m) * 60;
+    }
+    const colonMatch = raw.match(/^(\d+):(\d{2})$/);
+    if (colonMatch) {
+      return (parseInt(colonMatch[1], 10) * 60 + parseInt(colonMatch[2], 10)) * 60;
+    }
+    return null;
+  }
+
   private toggleTag(name: string): void {
     this.plugin.activeStudyTag =
       this.plugin.activeStudyTag === name ? null : name;
@@ -180,18 +259,18 @@ export class StudyTimerWidget extends MarkdownRenderChild {
     const { mode, state, phase, current_cycle, elapsed_seconds, target_seconds } = engine;
     const isPomo = mode === "pomodoro";
 
-    // Header
-    const modeLabel =
-      mode === "timer" ? "Timer" :
-      mode === "stopwatch" ? "Stopwatch" :
-      "Pomodoro";
+    // Highlight active mode button
+    this.containerEl.querySelectorAll<HTMLButtonElement>(".tracker-timer-mode-btn").forEach((btn) => {
+      btn.toggleClass("is-active", btn.dataset["mode"] === mode);
+      btn.disabled = state === "running" || state === "paused";
+    });
 
+    // Header: show phase info for pomodoro, hide otherwise
     if (isPomo) {
-      this.headerEl.setText(
-        `${modeLabel} · ${PHASE_EMOJI[phase]} ${PHASE_LABEL[phase]} · Session ${current_cycle}`
-      );
+      this.headerEl.setText(`${PHASE_EMOJI[phase]} ${PHASE_LABEL[phase]} · Session ${current_cycle}`);
+      this.headerEl.style.display = "";
     } else {
-      this.headerEl.setText(modeLabel);
+      this.headerEl.style.display = "none";
     }
 
     // Clock
@@ -222,6 +301,10 @@ export class StudyTimerWidget extends MarkdownRenderChild {
     // Skip button
     this.skipBtn.style.display = isPomo ? "" : "none";
     this.skipBtn.disabled = state !== "running" && state !== "paused";
+
+    // Duration row — only in Timer mode when idle
+    const showDuration = mode === "timer" && (state === "idle" || state === "finished");
+    this.durationRowEl.style.display = showDuration ? "" : "none";
 
     // Keep tag chips in sync (another UI may have changed the active tag)
     this.syncTagChips();

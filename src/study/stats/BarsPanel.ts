@@ -1,14 +1,20 @@
 import dayjs from "dayjs";
 import { EntryStore } from "../../shared/data/EntryStore";
-import { BarChart, BarDatum, BarSegment } from "../../shared/charts/BarChart";
+import { AreaChart, AreaDatum } from "../../shared/charts/AreaChart";
 import { StudyTag } from "../../settings/types";
 
-type BottomRange = "30d" | "12w" | "12m";
+type Range = "4w" | "12w" | "12m";
+
+const RANGE_LABELS: Record<Range, string> = {
+  "4w":  "Last 4 weeks",
+  "12w": "Last 12 weeks",
+  "12m": "Last 12 months",
+};
 
 export class BarsPanel {
-  private chart7: BarChart | null = null;
-  private chartBottom: BarChart | null = null;
-  private bottomRange: BottomRange = "30d";
+  private chart: AreaChart | null = null;
+  private range: Range = "12w";
+  private activeTag: string | null = null;
 
   constructor(
     private container: HTMLElement,
@@ -21,133 +27,80 @@ export class BarsPanel {
   render(): void {
     this.container.empty();
 
-    const chartsRow = this.container.createDiv({ cls: "tracker-bars-row" });
+    // ── Controls ──────────────────────────────────────────────────────────
+    const controls = this.container.createDiv({ cls: "tracker-bars-range-row" });
 
-    // ── Last 7 days ───────────────────────────────────────────────────────────
-    const left = chartsRow.createDiv({ cls: "tracker-bars-chart" });
-    left.createEl("h4", { text: "Last 7 days", cls: "tracker-bars-heading" });
-    this.chart7 = new BarChart(left);
-    this.chart7.render(this.buildDailyData(7));
-
-    // ── Bottom chart (30d / 12w / 12m) ────────────────────────────────────────
-    const right = chartsRow.createDiv({ cls: "tracker-bars-chart" });
-
-    const rangeRow = right.createDiv({ cls: "tracker-bars-range-row" });
-    rangeRow.createEl("h4", { text: "Last 30 days", cls: "tracker-bars-heading" });
-
-    const sel = rangeRow.createEl("select", { cls: "tracker-bars-range-select" });
-    (
-      [
-        ["30d", "30 days"],
-        ["12w", "12 weeks"],
-        ["12m", "12 months"],
-      ] as [BottomRange, string][]
-    ).forEach(([val, label]) => {
-      const opt = sel.createEl("option", { text: label, value: val });
-      opt.selected = val === this.bottomRange;
-    });
-    sel.addEventListener("change", () => {
-      this.bottomRange = sel.value as BottomRange;
-      rangeRow.querySelector("h4")!.textContent = sel.options[sel.selectedIndex].text;
-      this.chartBottom?.destroy();
-      this.chartBottom = new BarChart(right);
-      this.chartBottom.render(this.buildBottomData());
+    const rangeSel = controls.createEl("select", { cls: "tracker-bars-range-select" });
+    (Object.entries(RANGE_LABELS) as [Range, string][]).forEach(([val, label]) => {
+      const opt = rangeSel.createEl("option", { text: label, value: val });
+      opt.selected = val === this.range;
     });
 
-    this.chartBottom = new BarChart(right);
-    this.chartBottom.render(this.buildBottomData());
-  }
-
-  // ── Data builders ─────────────────────────────────────────────────────────
-
-  private getTagColor(tagName: string): string {
-    return (
-      this.tags.find((t) => t.name === tagName)?.color ??
-      "var(--interactive-accent)"
-    );
-  }
-
-  private buildDailyData(days: number): BarDatum[] {
-    const today = dayjs();
-    const result: BarDatum[] = [];
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = today.subtract(i, "day");
-      const dateStr = date.format("YYYY-MM-DD");
-      const sessions = this.store.getStudySessions({
-        date_from: dateStr,
-        date_to: dateStr,
+    if (this.tags.length > 1) {
+      const tagSel = controls.createEl("select", { cls: "tracker-bars-range-select" });
+      tagSel.createEl("option", { text: "All tags", value: "" });
+      for (const t of this.tags) {
+        tagSel.createEl("option", { text: t.name, value: t.name });
+      }
+      tagSel.addEventListener("change", () => {
+        this.activeTag = tagSel.value || null;
+        redraw();
       });
-      result.push(this.buildDatum(dateStr, date.format("ddd"), sessions));
-    }
-    return result;
-  }
-
-  private buildWeeklyData(weeks: number): BarDatum[] {
-    const today = dayjs();
-    const result: BarDatum[] = [];
-
-    for (let i = weeks - 1; i >= 0; i--) {
-      const weekEnd   = today.subtract(i * 7, "day");
-      const weekStart = weekEnd.subtract(6, "day");
-      const from = weekStart.format("YYYY-MM-DD");
-      const to   = weekEnd.format("YYYY-MM-DD");
-      const sessions = this.store.getStudySessions({ date_from: from, date_to: to });
-      result.push(this.buildDatum(from, weekStart.format("MMM D"), sessions));
-    }
-    return result;
-  }
-
-  private buildMonthlyData(months: number): BarDatum[] {
-    const today = dayjs();
-    const result: BarDatum[] = [];
-
-    for (let i = months - 1; i >= 0; i--) {
-      const month = today.subtract(i, "month");
-      const from  = month.startOf("month").format("YYYY-MM-DD");
-      const to    = month.endOf("month").format("YYYY-MM-DD");
-      const sessions = this.store.getStudySessions({ date_from: from, date_to: to });
-      result.push(this.buildDatum(from, month.format("MMM"), sessions));
-    }
-    return result;
-  }
-
-  private buildBottomData(): BarDatum[] {
-    if (this.bottomRange === "30d") return this.buildDailyData(30);
-    if (this.bottomRange === "12w") return this.buildWeeklyData(12);
-    return this.buildMonthlyData(12);
-  }
-
-  private buildDatum(
-    date: string,
-    label: string,
-    sessions: ReturnType<EntryStore["getStudySessions"]>
-  ): BarDatum {
-    // Aggregate minutes by tag
-    const tagTotals = new Map<string, number>();
-    for (const s of sessions) {
-      const tag = s.tags[0] ?? ""; // primary tag
-      tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + s.duration_minutes);
     }
 
-    const segments: BarSegment[] = Array.from(tagTotals.entries()).map(
-      ([tag, minutes]) => ({
-        tag,
-        minutes,
-        color: tag ? this.getTagColor(tag) : "var(--text-muted)",
-      })
-    );
+    // ── Chart ─────────────────────────────────────────────────────────────
+    const wrap = this.container.createDiv({ cls: "tracker-area-wrap" });
+    this.chart = new AreaChart(wrap);
+    this.chart.render(this.buildData());
 
-    return {
-      label,
-      date,
-      segments,
-      total: segments.reduce((s, seg) => s + seg.minutes, 0),
+    const redraw = () => {
+      this.chart?.destroy();
+      this.chart = new AreaChart(wrap);
+      this.chart.render(this.buildData());
     };
+
+    rangeSel.addEventListener("change", () => {
+      this.range = rangeSel.value as Range;
+      redraw();
+    });
+  }
+
+  // ── Data ──────────────────────────────────────────────────────────────────
+
+  private buildData(): AreaDatum[] {
+    if (this.range === "4w")  return this.weeklyData(4);
+    if (this.range === "12w") return this.weeklyData(12);
+    return this.monthlyData(12);
+  }
+
+  private weeklyData(weeks: number): AreaDatum[] {
+    const today = dayjs();
+    return Array.from({ length: weeks }, (_, i) => {
+      const end   = today.subtract((weeks - 1 - i) * 7, "day");
+      const start = end.subtract(6, "day");
+      const minutes = this.store.getTotalMinutes({
+        date_from: start.format("YYYY-MM-DD"),
+        date_to:   end.format("YYYY-MM-DD"),
+        ...(this.activeTag ? { tag: this.activeTag } : {}),
+      });
+      return { label: start.format("MMM D"), minutes };
+    });
+  }
+
+  private monthlyData(months: number): AreaDatum[] {
+    const today = dayjs();
+    return Array.from({ length: months }, (_, i) => {
+      const m = today.subtract(months - 1 - i, "month");
+      const minutes = this.store.getTotalMinutes({
+        date_from: m.startOf("month").format("YYYY-MM-DD"),
+        date_to:   m.endOf("month").format("YYYY-MM-DD"),
+        ...(this.activeTag ? { tag: this.activeTag } : {}),
+      });
+      return { label: m.format("MMM"), minutes };
+    });
   }
 
   destroy(): void {
-    this.chart7?.destroy();
-    this.chartBottom?.destroy();
+    this.chart?.destroy();
   }
 }
