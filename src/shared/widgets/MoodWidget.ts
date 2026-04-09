@@ -93,12 +93,16 @@ export class MoodWidget {
     const file = this.plugin.app.vault.getAbstractFileByPath(this.ctx.sourcePath);
     if (!(file instanceof TFile)) return;
 
-    const fieldName = this.plugin.settings.mood_field_name;
-    const entry     = `- (${fieldName}:: ${value})`;
+    const fieldName  = this.plugin.settings.mood_field_name;
+    const inlineVal  = `(${fieldName}:: ${value})`;
 
     try {
       const content = await this.plugin.app.vault.read(file);
-      await this.plugin.app.vault.modify(file, this.injectMoodEntry(content, entry));
+      const info    = this.ctx.getSectionInfo(this.el);
+      const newContent = info
+        ? this.injectIntoCodeBlock(content, inlineVal, info.lineStart, info.lineEnd)
+        : this.injectMoodEntry(content, `- ${inlineVal}`);
+      await this.plugin.app.vault.modify(file, newContent);
       await this.plugin.scanner?.scanFile(file);
 
       const logged = this.plugin.store
@@ -119,13 +123,24 @@ export class MoodWidget {
     const lines   = content.split("\n");
     const idx     = entry.source_line - 1;
     if (idx >= 0 && idx < lines.length) {
-      lines.splice(idx, 1);
+      // Clear the line rather than splicing — preserves code block fence structure
+      lines[idx] = "";
       await this.plugin.app.vault.modify(file, lines.join("\n"));
       await this.plugin.scanner?.scanFile(file);
     }
   }
 
-  /** Inject the entry under a `## Mood` heading, or append at end. */
+  /** Write the inline value inside the code block fences (preferred). */
+  private injectIntoCodeBlock(content: string, inlineVal: string, lineStart: number, lineEnd: number): string {
+    const lines = content.split("\n");
+    return [
+      ...lines.slice(0, lineStart + 1),
+      inlineVal,
+      ...lines.slice(lineEnd),
+    ].join("\n");
+  }
+
+  /** Fallback: inject the entry under a `## Mood` heading, or append at end. */
   private injectMoodEntry(content: string, entry: string): string {
     const HEADING = "## Mood";
     const lines   = content.split("\n");
