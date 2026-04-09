@@ -438,6 +438,21 @@
 
 .tracker-bars-chart { min-width: 0; }
 
+/* ── Area chart ─────────────────────────────────────────────────────────────── */
+
+.tracker-area-chart { position: relative; width: 100%; }
+.tracker-area-svg   { display: block; width: 100%; }
+.tracker-area-wrap  { width: 100%; }
+
+.tracker-area-grid {
+  stroke: var(--background-modifier-border);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tracker-area-dot { transition: r 120ms; }
+.tracker-area-dot:hover { r: 5; }
+
 .tracker-bars-heading {
   margin: 0;
   font-size: 0.72em;
