@@ -200,16 +200,3 @@ The plugin adds two sidebar panels (accessible from the ribbon):
 | `mood_scale_type` | `emoji`, `1-5`, or `1-10` |
 | `mood_emojis` | Emoji options when scale type is `emoji` |
 | `streak_grace_period` | Days you can miss without breaking a streak |
-
----
-
-## Releasing a new version
-
-Tag a commit with a version number and GitHub Actions will build and publish a release automatically:
-
-```
-git tag 1.0.1
-git push --tags
-```
-
-BRAT picks up the new release on all devices.
