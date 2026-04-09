@@ -49,26 +49,45 @@ export class StudyBarsWidget {
       opt.selected = val === this.range;
     });
 
+    // Tag selector (only show if multiple tags and no tag locked in config)
+    let activeTag = this.tag;
+    if (!this.tag && this.plugin.settings.study_tags.length > 1) {
+      const tagSel = controlRow.createEl("select", { cls: "tracker-bars-range-select" });
+      tagSel.createEl("option", { text: "All tags", value: "" });
+      for (const t of this.plugin.settings.study_tags) {
+        tagSel.createEl("option", { text: t.name, value: t.name });
+      }
+      tagSel.addEventListener("change", () => {
+        activeTag = tagSel.value || null;
+        redraw();
+      });
+    }
+
     const chartWrap = this.el.createDiv({ cls: "tracker-bars-chart" });
     let chart = new BarChart(chartWrap);
-    chart.render(this.buildData());
+
+    const redraw = () => {
+      chart.destroy();
+      chart = new BarChart(chartWrap);
+      chart.render(this.buildData(activeTag));
+    };
+
+    chart.render(this.buildData(activeTag));
 
     sel.addEventListener("change", () => {
       this.range = sel.value as Range;
       heading.textContent = RANGE_LABELS[this.range];
-      chart.destroy();
-      chart = new BarChart(chartWrap);
-      chart.render(this.buildData());
+      redraw();
     });
   }
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
-  private buildData(): BarDatum[] {
-    if (this.range === "7d")  return this.dailyData(7);
-    if (this.range === "30d") return this.dailyData(30);
-    if (this.range === "12w") return this.weeklyData(12);
-    return this.monthlyData(12);
+  private buildData(tag: string | null = this.tag): BarDatum[] {
+    if (this.range === "7d")  return this.dailyData(7, tag);
+    if (this.range === "30d") return this.dailyData(30, tag);
+    if (this.range === "12w") return this.weeklyData(12, tag);
+    return this.monthlyData(12, tag);
   }
 
   private tagColor(name: string): string {
@@ -76,8 +95,8 @@ export class StudyBarsWidget {
       ?? "var(--interactive-accent)";
   }
 
-  private datum(dateStr: string, label: string): BarDatum {
-    const filter = { date_from: dateStr, date_to: dateStr, ...(this.tag ? { tag: this.tag } : {}) };
+  private datum(dateStr: string, label: string, tag: string | null): BarDatum {
+    const filter = { date_from: dateStr, date_to: dateStr, ...(tag ? { tag } : {}) };
     const sessions = this.plugin.store.getStudySessions(filter);
     const totals = new Map<string, number>();
     for (const s of sessions) {
@@ -90,8 +109,8 @@ export class StudyBarsWidget {
     return { label, date: dateStr, segments, total: segments.reduce((s, x) => s + x.minutes, 0) };
   }
 
-  private datumRange(from: string, to: string, label: string): BarDatum {
-    const filter = { date_from: from, date_to: to, ...(this.tag ? { tag: this.tag } : {}) };
+  private datumRange(from: string, to: string, label: string, tag: string | null): BarDatum {
+    const filter = { date_from: from, date_to: to, ...(tag ? { tag } : {}) };
     const sessions = this.plugin.store.getStudySessions(filter);
     const totals = new Map<string, number>();
     for (const s of sessions) {
@@ -104,28 +123,28 @@ export class StudyBarsWidget {
     return { label, date: from, segments, total: segments.reduce((s, x) => s + x.minutes, 0) };
   }
 
-  private dailyData(days: number): BarDatum[] {
+  private dailyData(days: number, tag: string | null): BarDatum[] {
     const today = dayjs();
     return Array.from({ length: days }, (_, i) => {
       const d = today.subtract(days - 1 - i, "day");
-      return this.datum(d.format("YYYY-MM-DD"), d.format("ddd"));
+      return this.datum(d.format("YYYY-MM-DD"), d.format("ddd"), tag);
     });
   }
 
-  private weeklyData(weeks: number): BarDatum[] {
+  private weeklyData(weeks: number, tag: string | null): BarDatum[] {
     const today = dayjs();
     return Array.from({ length: weeks }, (_, i) => {
       const end   = today.subtract(i * 7, "day");
       const start = end.subtract(6, "day");
-      return this.datumRange(start.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"), start.format("MMM D"));
+      return this.datumRange(start.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"), start.format("MMM D"), tag);
     }).reverse();
   }
 
-  private monthlyData(months: number): BarDatum[] {
+  private monthlyData(months: number, tag: string | null): BarDatum[] {
     const today = dayjs();
     return Array.from({ length: months }, (_, i) => {
       const m = today.subtract(months - 1 - i, "month");
-      return this.datumRange(m.startOf("month").format("YYYY-MM-DD"), m.endOf("month").format("YYYY-MM-DD"), m.format("MMM"));
+      return this.datumRange(m.startOf("month").format("YYYY-MM-DD"), m.endOf("month").format("YYYY-MM-DD"), m.format("MMM"), tag);
     });
   }
 }
