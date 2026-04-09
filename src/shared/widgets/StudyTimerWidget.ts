@@ -82,7 +82,32 @@ export class StudyTimerWidget extends MarkdownRenderChild {
     const el = this.containerEl;
     el.addClasses(["tracker-widget", "tracker-timer-widget"]);
 
-    // Header: mode + phase info
+    // Mode selector
+    const modeRow = el.createDiv({ cls: "tracker-timer-mode-row" });
+    const modes: Array<{ mode: import("../../study/timer/TimerEngine").TimerMode; label: string }> = [
+      { mode: "stopwatch", label: "Stopwatch" },
+      { mode: "timer",     label: "Timer" },
+      { mode: "pomodoro",  label: "Pomodoro" },
+    ];
+    for (const { mode, label } of modes) {
+      const btn = modeRow.createEl("button", {
+        cls: "tracker-timer-mode-btn",
+        text: label,
+      });
+      btn.addEventListener("click", () => {
+        const engine = this.plugin.timerEngine;
+        if (engine.state === "running" || engine.state === "paused") return;
+        engine.configure(mode);
+        this.plugin.stopTimerTick();
+        this.plugin.saveTimerSnapshot(engine.getSnapshot());
+        this.refreshDisplay();
+      });
+      this.register(() => {}); // placeholder so we can update active state in refreshDisplay
+      // store ref by mode for active highlighting
+      (btn as HTMLButtonElement & { dataset: DOMStringMap }).dataset["mode"] = mode;
+    }
+
+    // Header: phase info (pomodoro only)
     this.headerEl = el.createDiv({ cls: "tracker-timer-widget-header" });
 
     // Clock
@@ -180,18 +205,18 @@ export class StudyTimerWidget extends MarkdownRenderChild {
     const { mode, state, phase, current_cycle, elapsed_seconds, target_seconds } = engine;
     const isPomo = mode === "pomodoro";
 
-    // Header
-    const modeLabel =
-      mode === "timer" ? "Timer" :
-      mode === "stopwatch" ? "Stopwatch" :
-      "Pomodoro";
+    // Highlight active mode button
+    this.containerEl.querySelectorAll<HTMLButtonElement>(".tracker-timer-mode-btn").forEach((btn) => {
+      btn.toggleClass("is-active", btn.dataset["mode"] === mode);
+      btn.disabled = state === "running" || state === "paused";
+    });
 
+    // Header: show phase info for pomodoro, hide otherwise
     if (isPomo) {
-      this.headerEl.setText(
-        `${modeLabel} · ${PHASE_EMOJI[phase]} ${PHASE_LABEL[phase]} · Session ${current_cycle}`
-      );
+      this.headerEl.setText(`${PHASE_EMOJI[phase]} ${PHASE_LABEL[phase]} · Session ${current_cycle}`);
+      this.headerEl.style.display = "";
     } else {
-      this.headerEl.setText(modeLabel);
+      this.headerEl.style.display = "none";
     }
 
     // Clock
