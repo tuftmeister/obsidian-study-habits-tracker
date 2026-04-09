@@ -931,6 +931,39 @@
   cursor: default;
 }
 
+.tracker-timer-duration-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  justify-content: center;
+  align-items: center;
+}
+
+.tracker-timer-duration-btn {
+  font-size: 0.72em;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.tracker-timer-duration-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.tracker-timer-duration-input {
+  font-size: 0.72em;
+  padding: 0.2em 0.5em;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  width: 6em;
+}
+
 .tracker-timer-widget-footer {
   font-size: 0.75em;
   color: var(--text-muted);
