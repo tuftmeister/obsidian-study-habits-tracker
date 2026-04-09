@@ -51,7 +51,7 @@ export class MoodWidget {
         cls: "tracker-habit-btn tracker-mood-change-btn",
         text: "Change",
       });
-      changeBtn.addEventListener("click", async () => {
+      changeBtn.addEventListener("mousedown", async (e) => { e.preventDefault();
         await this.removeLog(logged);
         this.el.empty();
         this.el.addClasses(["tracker-widget", "tracker-mood-widget"]);
@@ -72,7 +72,7 @@ export class MoodWidget {
           text: emoji,
           attr: { "aria-label": `Log mood: ${emoji}` },
         });
-        btn.addEventListener("click", () => this.logMood(emoji));
+        btn.addEventListener("mousedown", (e) => { e.preventDefault(); this.logMood(emoji); });
       }
     } else {
       const max = mood_scale_type === "1-10" ? 10 : 5;
@@ -82,7 +82,7 @@ export class MoodWidget {
           text: String(i),
           attr: { "aria-label": `Log mood: ${i}` },
         });
-        btn.addEventListener("click", () => this.logMood(i));
+        btn.addEventListener("mousedown", (e) => { e.preventDefault(); this.logMood(i); });
       }
     }
   }
