@@ -1,0 +1,29 @@
+{
+  "name": "obsidian-tracker",
+  "version": "0.0.1",
+  "description": "Study & Habits Tracker for Obsidian",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && node esbuild.config.mjs production",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "test:watch": "node node_modules/vitest/vitest.mjs"
+  },
+  "keywords": [],
+  "author": "Elias",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.0",
+    "obsidian": "latest",
+    "tslib": "^2.6.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "dayjs": "^1.11.11"
+  }
+}

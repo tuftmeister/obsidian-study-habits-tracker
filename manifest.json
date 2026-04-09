@@ -1,0 +1,10 @@
+{
+  "id": "study-habits-tracker",
+  "name": "Study & Habits Tracker",
+  "version": "0.0.1",
+  "minAppVersion": "1.4.0",
+  "description": "Track study sessions and habits. Timer, heatmaps, streaks. Data lives in plain Markdown.",
+  "author": "Elias",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
