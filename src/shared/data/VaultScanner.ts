@@ -36,8 +36,17 @@ export function extractDateFromFilename(
   dateFormat: string,
   fallbackDate: string
 ): string {
-  const parsed = dayjs(basename, dateFormat, /* strict */ true);
-  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : fallbackDate;
+  // Try the full basename first (exact match)
+  const full = dayjs(basename, dateFormat, /* strict */ true);
+  if (full.isValid()) return full.format("YYYY-MM-DD");
+
+  // Fall back to extracting a leading prefix the same length as the format
+  // e.g. "2026-04-09 - My notes" with format "YYYY-MM-DD" → "2026-04-09"
+  const prefix = basename.slice(0, dateFormat.length);
+  const partial = dayjs(prefix, dateFormat, /* strict */ true);
+  if (partial.isValid()) return partial.format("YYYY-MM-DD");
+
+  return fallbackDate;
 }
 
 // ── Line-level helpers ────────────────────────────────────────────────────────
