@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   TimerEngine,
   PomodoroConfig,
@@ -22,9 +22,17 @@ const TINY_CONFIG: PomodoroConfig = {
   cycles_before_long: 2,
 };
 
+// Advance fake clock by 1s then tick — mirrors the real 250ms interval behaviour
+// but at 1s resolution since tick() uses wall-clock time.
 function tickN(engine: TimerEngine, n: number): void {
-  for (let i = 0; i < n; i++) engine.tick();
+  for (let i = 0; i < n; i++) {
+    vi.advanceTimersByTime(1000);
+    engine.tick();
+  }
 }
+
+beforeEach(() => { vi.useFakeTimers(); });
+afterEach(() => { vi.useRealTimers(); });
 
 // ── Stopwatch ─────────────────────────────────────────────────────────────────
 

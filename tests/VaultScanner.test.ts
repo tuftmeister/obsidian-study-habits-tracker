@@ -26,9 +26,14 @@ describe("extractDateFromFilename", () => {
     expect(extractDateFromFilename("My Note", "YYYY-MM-DD", "2000-01-01")).toBe("2000-01-01");
   });
 
-  it("is strict — partial matches don't count", () => {
-    // "2026-04-08 extra" should not parse as a date in strict mode
-    expect(extractDateFromFilename("2026-04-08 extra", "YYYY-MM-DD", "2000-01-01")).toBe("2000-01-01");
+  it("extracts date from prefix when filename has extra text", () => {
+    // supports "2026-04-08 - My note" style filenames
+    expect(extractDateFromFilename("2026-04-08 - My note", "YYYY-MM-DD", "2000-01-01")).toBe("2026-04-08");
+    expect(extractDateFromFilename("2026-04-08 extra", "YYYY-MM-DD", "2000-01-01")).toBe("2026-04-08");
+  });
+
+  it("returns fallback when date is not at the start of the filename", () => {
+    expect(extractDateFromFilename("Note 2026-04-08", "YYYY-MM-DD", "2000-01-01")).toBe("2000-01-01");
   });
 
   it("supports custom date formats", () => {
