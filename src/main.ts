@@ -1,4 +1,4 @@
-import { Plugin, Notice, Modal, WorkspaceLeaf } from "obsidian";
+import { Plugin, Notice, Modal, WorkspaceLeaf, TFile, TAbstractFile } from "obsidian";
 import { PluginSettings } from "./settings/types";
 import { DEFAULT_SETTINGS } from "./settings/defaults";
 import { TrackerSettingsTab } from "./settings/SettingsTab";
@@ -86,6 +86,7 @@ export default class TrackerPlugin extends Plugin {
 
     await this.hydrateFromCache();
     this.refreshOpenViews();
+    this.registerVaultEvents();
 
     // ── Inline code-block widgets ───────────────────────────────────────────
     this.registerMarkdownCodeBlockProcessor("habit", (source, el, ctx) => {
@@ -311,14 +312,45 @@ export default class TrackerPlugin extends Plugin {
 
   // ── View helpers ────────────────────────────────────────────────────────────
 
+  private registerVaultEvents(): void {
+    // Debounce map: filepath → pending timeout id
+    const pending = new Map<string, number>();
+    const DEBOUNCE_MS = 1500;
+
+    const scheduleRescan = (file: TAbstractFile) => {
+      if (!(file instanceof TFile) || !file.path.endsWith(".md")) return;
+      if (pending.has(file.path)) window.clearTimeout(pending.get(file.path)!);
+      pending.set(file.path, window.setTimeout(async () => {
+        pending.delete(file.path);
+        await this.scanner?.scanFile(file);
+        this.refreshOpenViews();
+      }, DEBOUNCE_MS));
+    };
+
+    const handleDelete = (file: TAbstractFile) => {
+      if (!(file instanceof TFile) || !file.path.endsWith(".md")) return;
+      this.store.replaceFromFile(file.path, []);
+      this.refreshOpenViews();
+    };
+
+    const handleRename = (file: TAbstractFile, oldPath: string) => {
+      if (!(file instanceof TFile) || !file.path.endsWith(".md")) return;
+      this.store.replaceFromFile(oldPath, []);
+      scheduleRescan(file);
+    };
+
+    this.registerEvent(this.app.vault.on("modify", scheduleRescan));
+    this.registerEvent(this.app.vault.on("create", scheduleRescan));
+    this.registerEvent(this.app.vault.on("delete", handleDelete));
+    this.registerEvent(this.app.vault.on("rename", handleRename));
+  }
+
   refreshOpenViews(): void {
     for (const leaf of this.app.workspace.getLeavesOfType(STUDY_VIEW_TYPE)) {
-      const view = leaf.view as StudyView;
-      view.onClose().then(() => view.onOpen());
+      (leaf.view as StudyView).refresh();
     }
     for (const leaf of this.app.workspace.getLeavesOfType(HABITS_VIEW_TYPE)) {
-      const view = leaf.view as HabitsView;
-      view.onClose().then(() => view.onOpen());
+      (leaf.view as HabitsView).refresh();
     }
   }
 
