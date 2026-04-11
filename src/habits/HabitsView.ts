@@ -48,6 +48,11 @@ export class HabitsView extends ItemView {
     this.moodPanel.render();
   }
 
+  /** Re-render all data panels in-place without rebuilding the whole view. */
+  refresh(): void {
+    this.onClose().then(() => this.onOpen());
+  }
+
   async onClose(): Promise<void> {
     this.moodPanel?.destroy();
     this.moodPanel = null;

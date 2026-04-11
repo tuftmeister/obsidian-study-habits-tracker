@@ -150,13 +150,20 @@ export class TimerEngine {
   // ── Tick (called by the View's interval) ──────────────────────────────────
 
   /**
-   * Advance the timer by one second. Called by the View's setInterval.
-   * Pure: no side-effects other than state mutation and event emission.
+   * Refresh the timer. Called by the View's setInterval.
+   * Elapsed time is derived from the wall clock so the timer stays
+   * accurate even when the interval is throttled in background tabs
+   * or on mobile.
    */
   tick(): void {
     if (this.state !== "running") return;
 
-    this.elapsed_seconds++;
+    // Recompute from wall clock rather than counting ticks
+    if (this.wallClockAtStart !== null) {
+      this.elapsed_seconds = this.elapsedAtStart +
+        Math.floor((Date.now() - this.wallClockAtStart) / 1000);
+    }
+
     this.emit("tick", { elapsed_seconds: this.elapsed_seconds });
 
     if (this.mode === "stopwatch") return; // stopwatch never finishes

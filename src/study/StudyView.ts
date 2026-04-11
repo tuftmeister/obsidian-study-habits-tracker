@@ -12,8 +12,10 @@ export const STUDY_VIEW_TYPE = "tracker-study-view";
 export class StudyView extends ItemView {
   private plugin: TrackerPlugin;
   private timerUI: TimerUI | null = null;
+  private todayPanel: TodayPanel | null = null;
   private heatmapPanel: HeatmapPanel | null = null;
   private barsPanel: BarsPanel | null = null;
+  private recentSessions: RecentSessions | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: TrackerPlugin) {
     super(leaf);
@@ -30,19 +32,21 @@ export class StudyView extends ItemView {
     root.addClass("tracker-study-view");
 
     // ── Section A: Timer ───────────────────────────────────────────────────
-    const timerSection = root.createDiv({ cls: "tracker-section tracker-section-timer" });
-    this.timerUI = new TimerUI(timerSection, this.plugin);
-    this.timerUI.mount();
+    if (this.plugin.settings.show_timer_in_study_view) {
+      const timerSection = root.createDiv({ cls: "tracker-section tracker-section-timer" });
+      this.timerUI = new TimerUI(timerSection, this.plugin);
+      this.timerUI.mount();
+    }
 
     // ── Section B: Today ───────────────────────────────────────────────────
     const todaySection = root.createDiv({ cls: "tracker-section tracker-section-today" });
     todaySection.createEl("h3", { text: "Today", cls: "tracker-section-heading" });
-    const todayPanel = new TodayPanel(
+    this.todayPanel = new TodayPanel(
       todaySection,
       this.plugin.store,
       this.plugin.settings.streak_grace_period,
     );
-    todayPanel.render();
+    this.todayPanel.render();
 
     // ── Section C: Heatmap ────────────────────────────────────────────────
     const heatmapSection = root.createDiv({ cls: "tracker-section tracker-section-heatmap" });
@@ -68,12 +72,12 @@ export class StudyView extends ItemView {
     // ── Section E: Recent sessions ────────────────────────────────────────
     const recentSection = root.createDiv({ cls: "tracker-section tracker-section-recent" });
     recentSection.createEl("h3", { text: "Recent sessions", cls: "tracker-section-heading" });
-    const recentSessions = new RecentSessions(
+    this.recentSessions = new RecentSessions(
       recentSection,
       this.plugin.store,
       this.plugin.app,
     );
-    recentSessions.render();
+    this.recentSessions.render();
 
     // ── Section F: Manual entry ───────────────────────────────────────────
     const manualSection = root.createDiv({ cls: "tracker-section tracker-section-manual" });
@@ -86,20 +90,27 @@ export class StudyView extends ItemView {
         this.app,
         this.plugin.settings,
         this.plugin.store,
-        () => {
-          // Refresh all panels after a manual entry is saved
-          this.onClose().then(() => this.onOpen());
-        },
+        () => this.refresh(),
       ).open();
     });
+  }
+
+  /** Re-render all data panels in-place without rebuilding the whole view. */
+  refresh(): void {
+    this.todayPanel?.render();
+    this.heatmapPanel?.render();
+    this.barsPanel?.render();
+    this.recentSessions?.render();
   }
 
   async onClose(): Promise<void> {
     this.timerUI?.unmount();
     this.timerUI = null;
+    this.todayPanel = null;
     this.heatmapPanel?.destroy();
     this.heatmapPanel = null;
     this.barsPanel?.destroy();
     this.barsPanel = null;
+    this.recentSessions = null;
   }
 }

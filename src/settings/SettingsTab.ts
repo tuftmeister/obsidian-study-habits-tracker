@@ -54,6 +54,19 @@ export class TrackerSettingsTab extends PluginSettingTab {
       );
 
     new Setting(details)
+      .setName("Show timer in Study view")
+      .setDesc("Toggle the timer panel on the Study page. The study-timer widget and timer controls still work when hidden.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.show_timer_in_study_view)
+          .onChange(async (value) => {
+            this.plugin.settings.show_timer_in_study_view = value;
+            await this.plugin.saveSettings();
+            this.plugin.refreshOpenViews();
+          })
+      );
+
+    new Setting(details)
       .setName("Daily note folder")
       .setDesc(
         "Folder where daily notes are stored. Leave blank to search the whole vault. " +

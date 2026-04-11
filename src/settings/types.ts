@@ -24,6 +24,7 @@ export interface PluginSettings {
   // General
   study_module_enabled: boolean;
   habits_module_enabled: boolean;
+  show_timer_in_study_view: boolean;
   daily_note_folder: string;
   date_format: string;
   ignored_folders: string[];

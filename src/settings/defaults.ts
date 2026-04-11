@@ -4,6 +4,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   // General
   study_module_enabled: true,
   habits_module_enabled: true,
+  show_timer_in_study_view: true,
   daily_note_folder: "",
   date_format: "YYYY-MM-DD",
   ignored_folders: [],
