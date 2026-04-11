@@ -170,11 +170,12 @@ export default class TrackerPlugin extends Plugin {
     this.timerTickId = window.setInterval(() => {
       this.timerEngine.tick();
       this.timerTickCount++;
-      if (this.timerTickCount >= 10) {
+      // Save snapshot every ~10 seconds (40 ticks × 250ms)
+      if (this.timerTickCount >= 40) {
         this.timerTickCount = 0;
         this.saveTimerSnapshot(this.timerEngine.getSnapshot());
       }
-    }, 1000);
+    }, 250);
   }
 
   stopTimerTick(): void {

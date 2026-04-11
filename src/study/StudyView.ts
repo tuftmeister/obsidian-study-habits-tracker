@@ -30,9 +30,11 @@ export class StudyView extends ItemView {
     root.addClass("tracker-study-view");
 
     // ── Section A: Timer ───────────────────────────────────────────────────
-    const timerSection = root.createDiv({ cls: "tracker-section tracker-section-timer" });
-    this.timerUI = new TimerUI(timerSection, this.plugin);
-    this.timerUI.mount();
+    if (this.plugin.settings.show_timer_in_study_view) {
+      const timerSection = root.createDiv({ cls: "tracker-section tracker-section-timer" });
+      this.timerUI = new TimerUI(timerSection, this.plugin);
+      this.timerUI.mount();
+    }
 
     // ── Section B: Today ───────────────────────────────────────────────────
     const todaySection = root.createDiv({ cls: "tracker-section tracker-section-today" });
